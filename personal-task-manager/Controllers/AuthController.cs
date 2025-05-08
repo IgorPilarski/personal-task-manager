@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PersonalTaskManager.Controllers
 {
@@ -23,28 +24,30 @@ namespace PersonalTaskManager.Controllers
         }
 
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] User request)
         {
             if (await _context.Users.AnyAsync(u => u.Username == request.Username))
-                return BadRequest("Użytkownik już istnieje.");
+                return BadRequest("User already exists.");
 
-            // hash password
+            // Hash the password
             request.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.PasswordHash);
 
             _context.Users.Add(request);
             await _context.SaveChangesAsync();
 
-            return Ok("Zarejestrowano.");
+            return Ok("User registered.");
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] User request)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.PasswordHash, user.PasswordHash))
-                return Unauthorized("Nieprawidłowe dane logowania.");
+                return Unauthorized("Invalid login credentials.");
 
-            // JWT create
+            // Generate JWT
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
