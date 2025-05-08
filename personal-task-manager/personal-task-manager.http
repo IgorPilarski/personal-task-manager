@@ -1,0 +1,6 @@
+@personal_task_manager_HostAddress = http://localhost:5148
+
+GET {{personal_task_manager_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
