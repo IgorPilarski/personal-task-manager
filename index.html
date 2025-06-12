@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Manager</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding: 2rem; background: #f8f9fa; }
+    .card { margin-top: 1rem; }
+    .task-date { font-size: 0.8rem; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="mb-4">Personal Task Manager</h2>
+
+    <div id="auth-section">
+      <h4>Register / Login</h4>
+      <input id="username" class="form-control mb-2" placeholder="Username">
+      <input id="password" type="password" class="form-control mb-2" placeholder="Password">
+      <button onclick="register()" class="btn btn-primary me-2">Register</button>
+      <button onclick="login()" class="btn btn-success">Login</button>
+      <p id="auth-message" class="text-danger mt-2"></p>
+    </div>
+
+    <div id="task-section" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center">
+        <h4 class="mt-4">Create Task</h4>
+        <button onclick="logout()" class="btn btn-outline-danger">Logout</button>
+      </div>
+      <input id="task-title" class="form-control mb-2" placeholder="Task title">
+      <button onclick="createTask()" class="btn btn-secondary mb-3">Add Task</button>
+
+      <h5>Your Tasks</h5>
+      <ul id="task-list" class="list-group mb-4"></ul>
+
+      <h5>Completed Tasks</h5>
+      <ul id="completed-task-list" class="list-group"></ul>
+    </div>
+  </div>
+
+  <script>
+    const apiUrl = 'http://localhost:5000';
+    let token = '';
+
+    function register() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      fetch(`${apiUrl}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, passwordHash: password })
+      })
+      .then(r => r.ok ? alert('Registered! Now log in.') : r.text().then(text => showMessage(text)))
+    }
+
+    function login() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, passwordHash: password })
+      })
+      .then(r => r.json())
+      .then(data => {
+        token = data.token;
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('task-section').style.display = 'block';
+        loadTasks();
+      })
+      .catch(() => showMessage('Login failed'));
+    }
+
+    function logout() {
+      token = '';
+      document.getElementById('task-section').style.display = 'none';
+      document.getElementById('auth-section').style.display = 'block';
+      document.getElementById('task-title').value = '';
+      document.getElementById('task-list').innerHTML = '';
+      document.getElementById('completed-task-list').innerHTML = '';
+    }
+
+    function createTask() {
+      const title = document.getElementById('task-title').value;
+
+      fetch(`${apiUrl}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ title })
+      })
+      .then(() => {
+        document.getElementById('task-title').value = '';
+        loadTasks();
+      });
+    }
+
+    function loadTasks() {
+      fetch(`${apiUrl}/tasks`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(r => r.json())
+      .then(tasks => {
+        const activeList = document.getElementById('task-list');
+        const doneList = document.getElementById('completed-task-list');
+        activeList.innerHTML = '';
+        doneList.innerHTML = '';
+
+        tasks.forEach(t => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item d-flex justify-content-between align-items-center flex-column flex-sm-row';
+          li.innerHTML = `
+            <div>
+              <strong>${t.title}</strong><br/>
+              <span class="task-date">Created: ${new Date(t.createdAt).toLocaleString()}</span>
+            </div>
+          `;
+
+          if (t.isCompleted) {
+            const completedDate = new Date(t.completedAt).toLocaleString();
+            li.innerHTML += `<span class="task-date mt-2 mt-sm-0">Completed: ${completedDate}</span>`;
+            doneList.appendChild(li);
+          } else {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-outline-success mt-2 mt-sm-0';
+            btn.textContent = 'Mark done';
+            btn.onclick = () => markDone(t.id);
+            li.appendChild(btn);
+            activeList.appendChild(li);
+          }
+        });
+      });
+    }
+
+    function markDone(id) {
+      fetch(`${apiUrl}/tasks/${id}/complete`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(loadTasks);
+    }
+
+    function showMessage(msg) {
+      document.getElementById('auth-message').textContent = msg;
+    }
+  </script>
+</body>
+</html>
