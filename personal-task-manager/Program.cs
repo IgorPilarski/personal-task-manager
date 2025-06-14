@@ -40,12 +40,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization(options =>
-{
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        // .RequireAuthenticatedUser()
-        .Build();
-});
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -56,10 +51,9 @@ app.UseSwaggerUI();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.UseHttpsRedirection();
+app.UseRouting();
 
 app.UseCors("AllowAll");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
